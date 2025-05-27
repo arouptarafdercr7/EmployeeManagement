@@ -1,0 +1,52 @@
+name: Build and deploy ASP.NET to Azure
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.0.2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1.0.5
+
+      - name: Restore packages
+        run: nuget restore
+
+      - name: Build project
+        run: msbuild "7.font-awesome_Login_Registration.sln" /p:Configuration=Release
+
+      - name: Publish to folder
+        run: msbuild "7.font-awesome_Login_Registration.sln" /p:DeployOnBuild=true /p:PublishProfile=FolderProfile /p:PublishDir=published\
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASP-app
+          path: published/**
+
+  deploy:
+    runs-on: windows-latest
+    needs: build
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ASP-app
+
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'aroup'
+          package: .
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
